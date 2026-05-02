@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DigiBank Wallet UI Preview</title>
+  <style>
+    body { font-family: sans-serif; background: #0b1220; color: #e8eef9; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 12px; }
+    .wallet-card { background: #111a2e; border: 1px solid #2a395f; border-radius: 12px; padding: 14px; }
+    .balance { font-size: 20px; margin: 8px 0; }
+    .address { word-break: break-all; color: #9fb2d8; }
+    .risk-low { border-color: #2a9d8f; }
+    .risk-medium { border-color: #e9c46a; }
+    .risk-high { border-color: #e76f51; }
+  </style>
+</head>
+<body>
+  <h1>DigiBank Wallet Preview</h1>
+  <div class="grid" id="grid"></div>
+  <script type="module">
+    const wallets = [
+      { chain: 'stellar', address: 'GABCD...9012', balance: '1,250.00 DBTK', riskLevel: 'low' },
+      { chain: 'ethereum', address: '0x12ab...78ef', balance: '452.93 USDC', riskLevel: 'medium' },
+      { chain: 'solana', address: 'So98x...1234', balance: '99.10 DGBP', riskLevel: 'high' }
+    ];
+    document.getElementById('grid').innerHTML = wallets.map((w) => `
+      <div class="wallet-card risk-${w.riskLevel}">
+        <h3>${w.chain.toUpperCase()} Wallet</h3>
+        <p class="address">${w.address}</p>
+        <p class="balance">${w.balance}</p>
+        <span class="risk">Risk: ${w.riskLevel}</span>
+      </div>
+    `).join('');
+  </script>
+</body>
+</html>
