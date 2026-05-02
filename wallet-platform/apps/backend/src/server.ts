@@ -1,27 +1,43 @@
 import http from 'node:http';
-import { createPaymentRequest, createWallet, type Chain } from '@digibank/wallet-core';
 
-type Json = Record<string, unknown>;
-const wallets = new Map<string, ReturnType<typeof createWallet>>();
+type Chain = 'stellar' | 'soroban' | 'ethereum' | 'polygon' | 'base' | 'solana' | 'cardano';
 
-async function readJson(req: http.IncomingMessage): Promise<Json> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(chunk as Buffer);
-  const raw = Buffer.concat(chunks).toString('utf-8');
-  return raw ? (JSON.parse(raw) as Json) : {};
+type WalletAccount = {
+  id: string;
+  chain: Chain;
+  address: string;
+  createdAt: string;
+};
+
+function randomHex(length: number): string {
+  const chars = 'abcdef0123456789';
+  let out = '';
+  for (let i = 0; i < length; i += 1) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
 }
 
-function send(res: http.ServerResponse, code: number, payload: unknown): void {
+function createWallet(chain: Chain): WalletAccount {
+  const id = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const address = `${chain}_${randomHex(40)}`;
+  return { id, chain, address, createdAt: new Date().toISOString() };
+}
+
+const wallets = new Map<string, WalletAccount>();
+
+async function readJson(req: any): Promise<Record<string, unknown>> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of req) chunks.push(chunk as Uint8Array);
+  const raw = Buffer.concat(chunks).toString('utf-8');
+  return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+}
+
+function send(res: any, code: number, payload: unknown): void {
   res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(payload));
 }
 
-const server = http.createServer(async (req, res) => {
-  if (!req.url || !req.method) return send(res, 400, { error: 'invalid request' });
-
-  if (req.method === 'GET' && req.url === '/health') {
-    return send(res, 200, { ok: true, service: 'wallet-backend' });
-  }
+const server = http.createServer(async (req: any, res: any) => {
+  if (req.method === 'GET' && req.url === '/health') return send(res, 200, { ok: true, service: 'wallet-backend' });
 
   if (req.method === 'POST' && req.url === '/wallets') {
     const { chain } = await readJson(req);
@@ -33,12 +49,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && req.url === '/payment-requests') {
     const { walletId, amount, assetCode } = await readJson(req);
-    if (typeof walletId !== 'string' || typeof amount !== 'string' || typeof assetCode !== 'string') {
-      return send(res, 400, { error: 'walletId, amount, assetCode are required' });
-    }
+    if (typeof walletId !== 'string' || typeof amount !== 'string' || typeof assetCode !== 'string') return send(res, 400, { error: 'walletId, amount, assetCode are required' });
     const wallet = wallets.get(walletId);
     if (!wallet) return send(res, 404, { error: 'wallet not found' });
-    return send(res, 201, createPaymentRequest(wallet, amount, assetCode));
+    return send(res, 201, { walletId, chain: wallet.chain, amount, assetCode, reference: `pay_${Date.now()}` });
   }
 
   return send(res, 404, { error: 'not found' });
