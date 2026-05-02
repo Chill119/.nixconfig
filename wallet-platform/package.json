@@ -1,0 +1,8 @@
+{
+  "name": "digibank-wallet-platform",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "build": "npm run build -w @digibank/wallet-core && npm run build -w @digibank/backend && npm run build -w @digibank/ui"
+  }
+}
