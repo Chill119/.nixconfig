@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  bridge-core:
+    image: digex/bridge-core:latest
+    ports:
+      - "8080:8080"
+    environment:
+      DIGEX_ENV: "local"
+      BRIDGE_DB_URL: "postgres://digex:digex@postgres:5432/digex"
+      BRIDGE_REDIS_URL: "redis://redis:6379"
+      BRIDGE_POLICY_ENGINE_URL: "http://policy-engine:8090"
+      BRIDGE_TOKEN_REGISTRY_URL: "http://token-registry:8070"
+    depends_on:
+      - postgres
+      - redis
+      - policy-engine
+      - token-registry
+
+  api-gateway:
+    image: digex/api-gateway:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DIGEX_ENV: "local"
+      BRIDGE_CORE_URL: "http://bridge-core:8080"
+      AUTH_JWKS_URL: "http://identity:8100/.well-known/jwks.json"
+    depends_on:
+      - bridge-core
+      - identity
+
+  policy-engine:
+    image: digex/policy-engine:latest
+    ports:
+      - "8090:8090"
+    environment:
+      DIGEX_ENV: "local"
+      POLICY_CONFIG_PATH: "/config/policy.yaml"
+
+  token-registry:
+    image: digex/token-registry:latest
+    ports:
+      - "8070:8070"
+    environment:
+      DIGEX_ENV: "local"
+
+  identity:
+    image: digex/identity:latest
+    ports:
+      - "8100:8100"
+    environment:
+      DIGEX_ENV: "local"
+
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "digex"
+      POSTGRES_PASSWORD: "digex"
+      POSTGRES_DB: "digex"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "digex"
+    depends_on:
+      - prometheus
+
+volumes:
+  pgdata:
